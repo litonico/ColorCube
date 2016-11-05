@@ -1,0 +1,28 @@
+<html>
+    <head>
+        <script src="lib/three.min.js"></script>
+        <script src="lib/orbitControls.js"></script>
+
+        <script type="x-shader/x-vertex" id="vertexShader">
+            varying vec3 worldPosition;
+            void main() {
+                worldPosition = position;
+                gl_Position = projectionMatrix *
+                            modelViewMatrix *
+                            vec4(position,1.0);
+            }
+        </script>
+
+        <script type="x-shader/x-fragment" id="fragmentShader">
+            // Assume a cube from (0,0,0) to (1,1,1)
+            varying vec3 worldPosition;
+            void main(){
+                gl_FragColor = vec4(worldPosition.zxy, 1 );
+            }
+        </script>
+    </head>
+
+    <body>
+    <script src="index.js"></script>
+    </body>
+</html>
