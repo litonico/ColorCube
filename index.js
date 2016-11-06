@@ -82,15 +82,31 @@ function cubeOutlines(w) {
   ];
 }
 
+function lerp(t) {
+  // lerp
+  var start = new THREE.Vector3(0,0,0).multiplyScalar(1-t)
+  var end   = new THREE.Vector3(1,1,1).multiplyScalar(t)
+  var out   = new THREE.Vector3().addVectors(start, end)
+  return out;
+}
+
+function cube(t) {
+  var out = new THREE.Vector3(t*t*t,t,0.5)
+  return out;
+}
+
+function sin(t) {
+  var out = new THREE.Vector3(
+    t,
+    0.5*Math.cos(3*Math.PI*t)+0.5,
+    0.5
+  )
+  return out;
+}
+
 function colorLine(t) {
   // fn (t) -> Vector3(x,y,z)
-
-  // lerp
-  start = new THREE.Vector3(0,0,0).multiplyScalar(1-t)
-  end   = new THREE.Vector3(1,1,1).multiplyScalar(t)
-  out   = new THREE.Vector3().addVectors(start, end)
-  console.log("colorLine", t, start, end, out);
-  return out;
+  return cube(t);
 }
 
 function init() {
@@ -126,26 +142,52 @@ function init() {
     scene.add(outlinesMesh);
   });
 
+  // Perceptually even plane basis:
+  // x->g
+  // y->b
+  // z->r
+  var vec1 = line3d(
+    new THREE.Vector3(0,0,0).add(new THREE.Vector3(0.5,0.5,0.5)),
+    new THREE.Vector3(-0.146,0.986,-0.074).add(new THREE.Vector3(0.5,0.5,0.5)),
+    0.05
+  );
+
+  var vec2 = line3d(
+    new THREE.Vector3(0,0,0).add(new THREE.Vector3(0.5,0.5,0.5)),
+    //new THREE.Vector3(0.891,-0.453,0.0),
+    new THREE.Vector3(-0.453,0.0,0.891).add(new THREE.Vector3(0.5,0.5,0.5)),
+    0.05
+  );
+  scene.add(new THREE.Mesh( vec1, material ));
+  scene.add(new THREE.Mesh( vec2, material ));
+
   // Generate and add color gradient curve
   var colorLineMesh;
   var currentLine;
-  var lineProgress = { current: null, prev: null }
+  var current = null;
+  var prev =  null;
   // TODO(lito): make splitting in to steps automatic
-  var a = [0, 0.5]//, 1]
+  var lineSegments = 20;
+  var a = [0];
+  for (var i = 0; i < 1; i += 1/lineSegments) {
+    a.push(i);
+  }
+  a.push(1);
+
   a.forEach(function(time) {
-    console.log(time, lineProgress)
-    if (lineProgress.current !== null && lineProgress.prev !== null) {
+    prev    = current;
+    current = time;
+
+    if (current !== null && prev !== null) {
       currentLine = line3d(
-        colorLine(lineProgress.current),
-        colorLine(lineProgress.prev),
+        colorLine(prev),
+        colorLine(current),
         0.05
       );
       colorLineMesh = new THREE.Mesh( currentLine, material );
       scene.add(colorLineMesh);
     }
 
-    lineProgress.prev    = lineProgress.current;
-    lineProgress.current = time;
   });
 
   renderer.setClearColor(0xcccccc, 1);
