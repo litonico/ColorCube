@@ -2,6 +2,11 @@ var scene;
 var camera;
 var renderer;
 
+var POINT_ONE   = new THREE.Vector3(0,0,0);
+var POINT_TWO   = new THREE.Vector3(0,1,0);
+var POINT_THREE = new THREE.Vector3(1,0,1);
+var POINT_FOUR  = new THREE.Vector3(1,1,1);
+
 function line3d(start,end,width) {
   var worldUp = new THREE.Vector3(0,1,0);
 
@@ -82,10 +87,9 @@ function cubeOutlines(w) {
   ];
 }
 
-function lerp(t) {
-  // lerp
-  var start = new THREE.Vector3(0,0,0).multiplyScalar(1-t)
-  var end   = new THREE.Vector3(1,1,1).multiplyScalar(t)
+function lerp(start, end, t) {
+  var start = new THREE.Vector3().copy(start).multiplyScalar(1-t)
+  var end   = new THREE.Vector3().copy(end).multiplyScalar(t)
   var out   = new THREE.Vector3().addVectors(start, end)
   return out;
 }
@@ -104,9 +108,42 @@ function sin(t) {
   return out;
 }
 
+function bezier(t) {
+  var ab = lerp(POINT_ONE, POINT_TWO, t);
+  var bc = lerp(POINT_TWO, POINT_THREE, t);
+  var cd = lerp(POINT_THREE, POINT_FOUR, t);
+  var abc = lerp(ab, bc, t);
+  var bcd = lerp(bc, cd, t);
+
+  return lerp(abc, bcd, t);
+}
+
+function circle(_basisX, _basisY,radius,t, offset) {
+  // An example circle, on the plane of constant brightness:
+  // circle(
+  //   new THREE.Vector3(-0.146,0.986,-0.074),
+  //   new THREE.Vector3(-0.453,0.0,0.891),
+  //   0.9, //Math.sqrt(2)/2
+  //   t,
+  //   new THREE.Vector3(0.5,0.5, 0.5)
+  // );
+
+  if (!offset) {
+    offset = new THREE.Vector3(0,0,0)
+  }
+  basisX = new THREE.Vector3().copy(_basisX);
+  basisY = new THREE.Vector3().copy(_basisY);
+
+  return basisX
+    .multiplyScalar(Math.sin(t*2*Math.PI)*radius)
+    .add(
+      basisY.multiplyScalar(Math.cos(t*2*Math.PI)*radius)
+    ).add(offset);
+}
+
 function colorLine(t) {
   // fn (t) -> Vector3(x,y,z)
-  return cube(t);
+  return bezier(t);
 }
 
 function init() {
@@ -124,10 +161,13 @@ function init() {
   container.appendChild(renderer.domElement);
 
   camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 1, 1000);
-  camera.position.z = 5;
+  camera.position.z = 3;
+  camera.position.y = 2;
+  camera.position.x = 2;
 
   controls = new THREE.OrbitControls( camera );
-  controls.target.set( 0, 0, 0 );
+  controls.target.set( 0.5, 0.5, 0.5 );
+  controls.update();
 
   scene = new THREE.Scene();
   var material = new THREE.ShaderMaterial({
@@ -142,24 +182,39 @@ function init() {
     scene.add(outlinesMesh);
   });
 
+  // 0.30R + 0.59G + 0.11B
   // Perceptually even plane basis:
   // x->g
   // y->b
   // z->r
+  var rgbShift = new THREE.Vector3(0.59,0.11,0.30).normalize();
+  var basisY = new THREE.Vector3(-0.146,0.986,-0.074);
+  var basisX = new THREE.Vector3(-0.453,0.0,0.891)
   var vec1 = line3d(
     new THREE.Vector3(0,0,0).add(new THREE.Vector3(0.5,0.5,0.5)),
-    new THREE.Vector3(-0.146,0.986,-0.074).add(new THREE.Vector3(0.5,0.5,0.5)),
+    basisY.add(new THREE.Vector3(0.5,0.5,0.5)),
     0.05
   );
-
   var vec2 = line3d(
     new THREE.Vector3(0,0,0).add(new THREE.Vector3(0.5,0.5,0.5)),
     //new THREE.Vector3(0.891,-0.453,0.0),
-    new THREE.Vector3(-0.453,0.0,0.891).add(new THREE.Vector3(0.5,0.5,0.5)),
+    basisX.add(new THREE.Vector3(0.5,0.5,0.5)),
     0.05
   );
-  scene.add(new THREE.Mesh( vec1, material ));
-  scene.add(new THREE.Mesh( vec2, material ));
+  var rgbShiftLine = line3d(
+    new THREE.Vector3(0,0,0),
+    rgbShift,
+    0.05
+  );
+  var defaultVec = line3d(
+    new THREE.Vector3(0,0,0),
+    new THREE.Vector3(1,1,1).normalize(),
+    0.05
+  );
+  // scene.add(new THREE.Mesh( vec1, material ));
+  // scene.add(new THREE.Mesh( vec2, material ));
+  // scene.add(new THREE.Mesh( rgbShiftLine, material ));
+  // scene.add(new THREE.Mesh( defaultVec, material ));
 
   // Generate and add color gradient curve
   var colorLineMesh;
@@ -167,7 +222,7 @@ function init() {
   var current = null;
   var prev =  null;
   // TODO(lito): make splitting in to steps automatic
-  var lineSegments = 20;
+  var lineSegments = 100;
   var a = [0];
   for (var i = 0; i < 1; i += 1/lineSegments) {
     a.push(i);
@@ -195,7 +250,6 @@ function init() {
 }
 
 function render() {
-  // TODO(Lito) geometry.morphTargets.push( { name: "target" + i, vertices: vertices } );
   requestAnimationFrame( render );
   renderer.render(scene, camera);
 }
