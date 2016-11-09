@@ -1,11 +1,15 @@
 var scene;
 var camera;
 var renderer;
+var controls;
+var raycaster;
+var frustumPlane;
+var draggableHandles = [];
 
-var POINT_ONE   = new THREE.Vector3(0,0,0);
-var POINT_TWO   = new THREE.Vector3(0,1,0);
-var POINT_THREE = new THREE.Vector3(1,0,1);
-var POINT_FOUR  = new THREE.Vector3(1,1,1);
+var POINT_ONE   = new THREE.Vector3(0.2,0.1,0.9);
+var POINT_TWO   = new THREE.Vector3(0.1,0.9,0.1);
+var POINT_THREE = new THREE.Vector3(0.8,0.1,0.9);
+var POINT_FOUR  = new THREE.Vector3(0.9,0.9,0.9);
 
 function line3d(start,end,width) {
   var worldUp = new THREE.Vector3(0,1,0);
@@ -160,6 +164,8 @@ function init() {
   renderer.setSize(window.innerWidth, window.innerHeight);
   container.appendChild(renderer.domElement);
 
+  raycaster = new THREE.Raycaster();
+
   camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 1, 1000);
   camera.position.z = 3;
   camera.position.y = 2;
@@ -170,7 +176,7 @@ function init() {
   controls.update();
 
   scene = new THREE.Scene();
-  var material = new THREE.ShaderMaterial({
+  rgbMaterial = new THREE.ShaderMaterial({
     vertexShader: document.getElementById('vertexShader').textContent,
     fragmentShader: document.getElementById('fragmentShader').textContent
   });
@@ -178,51 +184,125 @@ function init() {
   // Generate and add cube outlines
   var outlinesMesh;
   cubeOutlines(0.05).forEach(function(line){
-    outlinesMesh = new THREE.Mesh( line, material );
+    outlinesMesh = new THREE.Mesh( line, rgbMaterial );
     scene.add(outlinesMesh);
   });
+
+  // Frustum plane for dragging
+  var planeMat = new THREE.MeshBasicMaterial({color: 0xffffff});
+  planeMat.visible = false
+  frustumPlane = new THREE.Mesh(new THREE.PlaneBufferGeometry(500, 500, 8, 8), planeMat);
+  scene.add(frustumPlane);
+
 
   // 0.30R + 0.59G + 0.11B
   // Perceptually even plane basis:
   // x->g
   // y->b
   // z->r
-  var rgbShift = new THREE.Vector3(0.59,0.11,0.30).normalize();
-  var basisY = new THREE.Vector3(-0.146,0.986,-0.074);
-  var basisX = new THREE.Vector3(-0.453,0.0,0.891)
-  var vec1 = line3d(
-    new THREE.Vector3(0,0,0).add(new THREE.Vector3(0.5,0.5,0.5)),
-    basisY.add(new THREE.Vector3(0.5,0.5,0.5)),
-    0.05
-  );
-  var vec2 = line3d(
-    new THREE.Vector3(0,0,0).add(new THREE.Vector3(0.5,0.5,0.5)),
-    //new THREE.Vector3(0.891,-0.453,0.0),
-    basisX.add(new THREE.Vector3(0.5,0.5,0.5)),
-    0.05
-  );
-  var rgbShiftLine = line3d(
-    new THREE.Vector3(0,0,0),
-    rgbShift,
-    0.05
-  );
-  var defaultVec = line3d(
-    new THREE.Vector3(0,0,0),
-    new THREE.Vector3(1,1,1).normalize(),
-    0.05
-  );
-  // scene.add(new THREE.Mesh( vec1, material ));
-  // scene.add(new THREE.Mesh( vec2, material ));
-  // scene.add(new THREE.Mesh( rgbShiftLine, material ));
-  // scene.add(new THREE.Mesh( defaultVec, material ));
+  // var rgbShift = new THREE.Vector3(0.59,0.11,0.30).normalize();
+  // var basisY = new THREE.Vector3(-0.146,0.986,-0.074);
+  // var basisX = new THREE.Vector3(-0.453,0.0,0.891)
+  // var vec1 = line3d(
+  //   new THREE.Vector3(0,0,0).add(new THREE.Vector3(0.5,0.5,0.5)),
+  //   basisY.add(new THREE.Vector3(0.5,0.5,0.5)),
+  //   0.05
+  // );
+  // var vec2 = line3d(
+  //   new THREE.Vector3(0,0,0).add(new THREE.Vector3(0.5,0.5,0.5)),
+  //   //new THREE.Vector3(0.891,-0.453,0.0),
+  //   basisX.add(new THREE.Vector3(0.5,0.5,0.5)),
+  //   0.05
+  // );
+  // var rgbShiftLine = line3d(
+  //   new THREE.Vector3(0,0,0),
+  //   rgbShift,
+  //   0.05
+  // );
+  // var defaultVec = line3d(
+  //   new THREE.Vector3(0,0,0),
+  //   new THREE.Vector3(1,1,1).normalize(),
+  //   0.05
+  // );
+  // scene.add(new THREE.Mesh( vec1, rgbMaterial ));
+  // scene.add(new THREE.Mesh( vec2, rgbMaterial ));
+  // scene.add(new THREE.Mesh( rgbShiftLine, rgbMaterial ));
+  // scene.add(new THREE.Mesh( defaultVec, rgbMaterial ));
 
+  initHandles();
+
+  renderer.setClearColor(0xcccccc, 1);
+  render();
+}
+
+function render() {
+  requestAnimationFrame( render );
+  renderer.render(scene, camera);
+}
+
+var handleConnectors = []
+function initHandles() {
+  // bezier curve handles
+  var handleMaterial = new THREE.MeshBasicMaterial( {color: 0xffff00} );
+  var sphere;
+  [POINT_ONE, POINT_TWO, POINT_THREE, POINT_FOUR].forEach(function(handle) {
+    var handleGeometry = new THREE.SphereGeometry( 0.06, 32, 32 );
+
+    sphere = new THREE.Mesh( handleGeometry, handleMaterial );
+    sphere.position.set(handle.x, handle.y, handle.z);
+    draggableHandles.push(sphere);
+    scene.add( sphere );
+  });
+  // var handleTangent1 = line3d(POINT_ONE, POINT_TWO, 0.01)
+  // var handleTangent2 = line3d(POINT_THREE, POINT_FOUR, 0.01)
+  // var handleTangentMesh1 = new THREE.Mesh(handleTangent1, handleMaterial) );
+  // var handleTangentMesh2 = new THREE.Mesh(handleTangent2, handleMaterial) );
+  // handleTangents.push( handleTangentMesh1 );
+  // handleTangents.push( handleTangentMesh2 );
+  // scene.add( handleTangentMesh1 );
+  // scene.add( handleTangentMesh2 );
+
+  var material = new THREE.LineBasicMaterial({
+    color: 0xffff00
+  });
+
+  hgeo = new THREE.BufferGeometry();
+  hgeo.attributes = {
+    position: {
+      itemSize: 3,
+      array: new Float32Array(4)
+    }
+  };
+
+  hgeo.vertices.push(
+    POINT_ONE,
+    POINT_TWO,
+    POINT_THREE,
+    POINT_FOUR
+  );
+
+  var line = new THREE.Line( hgeo, material );
+  scene.add( line );
+}
+
+function updateHandles() {
+  hgeo.verticesNeedUpdate = true
+
+}
+
+function update() {
+  updateHandles();
+  updateCurve();
+}
+
+function updateCurve() {
   // Generate and add color gradient curve
   var colorLineMesh;
   var currentLine;
   var current = null;
   var prev =  null;
   // TODO(lito): make splitting in to steps automatic
-  var lineSegments = 100;
+  var lineSegments = 20;
   var a = [0];
   for (var i = 0; i < 1; i += 1/lineSegments) {
     a.push(i);
@@ -239,19 +319,11 @@ function init() {
         colorLine(current),
         0.05
       );
-      colorLineMesh = new THREE.Mesh( currentLine, material );
+      colorLineMesh = new THREE.Mesh( currentLine, rgbMaterial );
       scene.add(colorLineMesh);
     }
 
   });
-
-  renderer.setClearColor(0xcccccc, 1);
-  render();
-}
-
-function render() {
-  requestAnimationFrame( render );
-  renderer.render(scene, camera);
 }
 
 var mouse = new THREE.Vector2();
@@ -261,13 +333,57 @@ function onMouseMove( event ) {
 	mouse.y = - ( event.clientY / window.innerHeight ) * 2 + 1;
 }
 
-var mouseDown;
+var offset = new THREE.Vector3(0,0,0);
+var selection = null;
 document.body.addEventListener("mouseup", function(event) {
-  mouseDown = false;
+  update();
+  controls.enabled = true;
+  selection = null;
 });
+
 document.body.addEventListener("mousedown", function(event) {
-  mouseDown = true;
+  mouse.x = ( event.clientX / window.innerWidth ) * 2 - 1;
+  mouse.y = - ( event.clientY / window.innerHeight ) * 2 + 1;
+
+  var vector = new THREE.Vector3(mouse.x, mouse.y, 1);
+  vector.unproject(camera);
+
+  raycaster.set(camera.position, vector.sub(camera.position).normalize());
+
+  var intersects = raycaster.intersectObjects(draggableHandles);
+  if (intersects.length > 0) {
+    controls.enabled = false;
+    selection = intersects[0].object;
+    var intersects = raycaster.intersectObject(frustumPlane);
+    offset.copy(intersects[0].point).sub(frustumPlane.position)
+  }
+
+  POINT_ONE = draggableHandles[0].position;
+  POINT_TWO = draggableHandles[1].position;
+  POINT_THREE = draggableHandles[2].position;
+  POINT_FOUR = draggableHandles[3].position;
 });
-document.body.addEventListener("mousemove", onMouseMove, false);
+
+document.body.addEventListener("mousemove", function(event){
+  mouse.x = ( event.clientX / window.innerWidth ) * 2 - 1;
+  mouse.y = - ( event.clientY / window.innerHeight ) * 2 + 1;
+
+  var vector = new THREE.Vector3(mouse.x, mouse.y, 1);
+  vector.unproject(camera);
+
+  raycaster.set(camera.position, vector.sub(camera.position).normalize());
+
+  if (selection) {
+    var intersects = raycaster.intersectObject(frustumPlane);
+    selection.position.copy(intersects[0].point.sub(offset));
+  } else{
+    var intersects = raycaster.intersectObjects(draggableHandles);
+    // Update frustum plane
+    if (intersects.length > 0) {
+      frustumPlane.position.copy(intersects[0].object.position);
+      frustumPlane.lookAt(camera.position);
+    }
+  }
+});
 
 init();
