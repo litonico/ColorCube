@@ -147,7 +147,15 @@ function circle(_basisX, _basisY,radius,t, offset) {
 
 function colorLine(t) {
   // fn (t) -> Vector3(x,y,z)
-  return bezier(t);
+//
+  console.log('hit');
+  return circle(
+    new THREE.Vector3(-0.146,0.986,-0.074),
+    new THREE.Vector3(-0.453,0.0,0.891),
+    0.9, //Math.sqrt(2)/2
+    t,
+    new THREE.Vector3(0.5,0.5, 0.5)
+  );
 }
 
 function init() {
@@ -188,114 +196,6 @@ function init() {
     scene.add(outlinesMesh);
   });
 
-  // Frustum plane for dragging
-  var planeMat = new THREE.MeshBasicMaterial({color: 0xffffff});
-  planeMat.visible = false
-  frustumPlane = new THREE.Mesh(new THREE.PlaneBufferGeometry(500, 500, 8, 8), planeMat);
-  scene.add(frustumPlane);
-
-
-  // 0.30R + 0.59G + 0.11B
-  // Perceptually even plane basis:
-  // x->g
-  // y->b
-  // z->r
-  // var rgbShift = new THREE.Vector3(0.59,0.11,0.30).normalize();
-  // var basisY = new THREE.Vector3(-0.146,0.986,-0.074);
-  // var basisX = new THREE.Vector3(-0.453,0.0,0.891)
-  // var vec1 = line3d(
-  //   new THREE.Vector3(0,0,0).add(new THREE.Vector3(0.5,0.5,0.5)),
-  //   basisY.add(new THREE.Vector3(0.5,0.5,0.5)),
-  //   0.05
-  // );
-  // var vec2 = line3d(
-  //   new THREE.Vector3(0,0,0).add(new THREE.Vector3(0.5,0.5,0.5)),
-  //   //new THREE.Vector3(0.891,-0.453,0.0),
-  //   basisX.add(new THREE.Vector3(0.5,0.5,0.5)),
-  //   0.05
-  // );
-  // var rgbShiftLine = line3d(
-  //   new THREE.Vector3(0,0,0),
-  //   rgbShift,
-  //   0.05
-  // );
-  // var defaultVec = line3d(
-  //   new THREE.Vector3(0,0,0),
-  //   new THREE.Vector3(1,1,1).normalize(),
-  //   0.05
-  // );
-  // scene.add(new THREE.Mesh( vec1, rgbMaterial ));
-  // scene.add(new THREE.Mesh( vec2, rgbMaterial ));
-  // scene.add(new THREE.Mesh( rgbShiftLine, rgbMaterial ));
-  // scene.add(new THREE.Mesh( defaultVec, rgbMaterial ));
-
-  initHandles();
-
-  renderer.setClearColor(0xcccccc, 1);
-  render();
-}
-
-function render() {
-  requestAnimationFrame( render );
-  renderer.render(scene, camera);
-}
-
-var handleConnectors = []
-function initHandles() {
-  // bezier curve handles
-  var handleMaterial = new THREE.MeshBasicMaterial( {color: 0xffff00} );
-  var sphere;
-  [POINT_ONE, POINT_TWO, POINT_THREE, POINT_FOUR].forEach(function(handle) {
-    var handleGeometry = new THREE.SphereGeometry( 0.06, 32, 32 );
-
-    sphere = new THREE.Mesh( handleGeometry, handleMaterial );
-    sphere.position.set(handle.x, handle.y, handle.z);
-    draggableHandles.push(sphere);
-    scene.add( sphere );
-  });
-  // var handleTangent1 = line3d(POINT_ONE, POINT_TWO, 0.01)
-  // var handleTangent2 = line3d(POINT_THREE, POINT_FOUR, 0.01)
-  // var handleTangentMesh1 = new THREE.Mesh(handleTangent1, handleMaterial) );
-  // var handleTangentMesh2 = new THREE.Mesh(handleTangent2, handleMaterial) );
-  // handleTangents.push( handleTangentMesh1 );
-  // handleTangents.push( handleTangentMesh2 );
-  // scene.add( handleTangentMesh1 );
-  // scene.add( handleTangentMesh2 );
-
-  var material = new THREE.LineBasicMaterial({
-    color: 0xffff00
-  });
-
-  hgeo = new THREE.BufferGeometry();
-  hgeo.attributes = {
-    position: {
-      itemSize: 3,
-      array: new Float32Array(4)
-    }
-  };
-
-  hgeo.vertices.push(
-    POINT_ONE,
-    POINT_TWO,
-    POINT_THREE,
-    POINT_FOUR
-  );
-
-  var line = new THREE.Line( hgeo, material );
-  scene.add( line );
-}
-
-function updateHandles() {
-  hgeo.verticesNeedUpdate = true
-
-}
-
-function update() {
-  updateHandles();
-  updateCurve();
-}
-
-function updateCurve() {
   // Generate and add color gradient curve
   var colorLineMesh;
   var currentLine;
@@ -320,10 +220,113 @@ function updateCurve() {
         0.05
       );
       colorLineMesh = new THREE.Mesh( currentLine, rgbMaterial );
-      scene.add(colorLineMesh);
+      // scene.add(colorLineMesh);
     }
 
   });
+
+
+  // 0.30R + 0.59G + 0.11B
+  // Perceptually even plane basis:
+  // x->g
+  // y->b
+  // z->r
+  var rgbShift = new THREE.Vector3(0.59,0.11,0.30).normalize();
+  var basisY = new THREE.Vector3(-0.146,0.986,-0.074);
+  var basisX = new THREE.Vector3(-0.453,0.0,0.891)
+  var vec1 = line3d(
+    new THREE.Vector3(0,0,0).add(new THREE.Vector3(0.5,0.5,0.5)),
+    basisY.add(new THREE.Vector3(0.5,0.5,0.5)),
+    0.05
+  );
+  var vec2 = line3d(
+    new THREE.Vector3(0,0,0).add(new THREE.Vector3(0.5,0.5,0.5)),
+    //new THREE.Vector3(0.891,-0.453,0.0),
+    basisX.add(new THREE.Vector3(0.5,0.5,0.5)),
+    0.05
+  );
+  var rgbShiftLine = line3d(
+    new THREE.Vector3(0,0,0).add(new THREE.Vector3(0.5,0.5,0.5)),
+    rgbShift.add(new THREE.Vector3(0.5,0.5,0.5)),
+    0.05
+  );
+  var defaultVec = line3d(
+    new THREE.Vector3(0,0,0).add(new THREE.Vector3(0.5,0.5,0.5)),
+    new THREE.Vector3(1,1,1).normalize().add(new THREE.Vector3(0.5,0.5,0.5)),
+    0.05
+  );
+  // scene.add(new THREE.Mesh( vec1, rgbMaterial ));
+  // scene.add(new THREE.Mesh( vec2, rgbMaterial ));
+  // scene.add(new THREE.Mesh( rgbShiftLine, rgbMaterial ));
+  scene.add(new THREE.Mesh( defaultVec, rgbMaterial ));
+
+  //initHandles();
+
+  renderer.setClearColor(0xcccccc, 1);
+  render();
+}
+
+function render() {
+  requestAnimationFrame( render );
+  renderer.render(scene, camera);
+}
+
+var handleConnectors = []
+// function initHandles() {
+//   // bezier curve handles
+//   var handleMaterial = new THREE.MeshBasicMaterial( {color: 0xffff00} );
+//   var sphere;
+//   [POINT_ONE, POINT_TWO, POINT_THREE, POINT_FOUR].forEach(function(handle) {
+//     var handleGeometry = new THREE.SphereGeometry( 0.06, 32, 32 );
+//
+//     sphere = new THREE.Mesh( handleGeometry, handleMaterial );
+//     sphere.position.set(handle.x, handle.y, handle.z);
+//     draggableHandles.push(sphere);
+//     scene.add( sphere );
+//   });
+//   // var handleTangent1 = line3d(POINT_ONE, POINT_TWO, 0.01)
+//   // var handleTangent2 = line3d(POINT_THREE, POINT_FOUR, 0.01)
+//   // var handleTangentMesh1 = new THREE.Mesh(handleTangent1, handleMaterial) );
+//   // var handleTangentMesh2 = new THREE.Mesh(handleTangent2, handleMaterial) );
+//   // handleTangents.push( handleTangentMesh1 );
+//   // handleTangents.push( handleTangentMesh2 );
+//   // scene.add( handleTangentMesh1 );
+//   // scene.add( handleTangentMesh2 );
+//
+//   var material = new THREE.LineBasicMaterial({
+//     color: 0xffff00
+//   });
+//
+//   hgeo = new THREE.BufferGeometry();
+//   hgeo.attributes = {
+//     position: {
+//       itemSize: 3,
+//       array: new Float32Array(4)
+//     }
+//   };
+//
+//   hgeo.vertices.push(
+//     POINT_ONE,
+//     POINT_TWO,
+//     POINT_THREE,
+//     POINT_FOUR
+//   );
+//
+//   var line = new THREE.Line( hgeo, material );
+//   scene.add( line );
+// }
+//
+function updateHandles() {
+  hgeo.verticesNeedUpdate = true
+
+}
+
+function update() {
+//  updateHandles();
+//  updateCurve();
+}
+
+function updateCurve() {
 }
 
 var mouse = new THREE.Vector2();
@@ -335,55 +338,55 @@ function onMouseMove( event ) {
 
 var offset = new THREE.Vector3(0,0,0);
 var selection = null;
-document.body.addEventListener("mouseup", function(event) {
-  update();
-  controls.enabled = true;
-  selection = null;
-});
-
-document.body.addEventListener("mousedown", function(event) {
-  mouse.x = ( event.clientX / window.innerWidth ) * 2 - 1;
-  mouse.y = - ( event.clientY / window.innerHeight ) * 2 + 1;
-
-  var vector = new THREE.Vector3(mouse.x, mouse.y, 1);
-  vector.unproject(camera);
-
-  raycaster.set(camera.position, vector.sub(camera.position).normalize());
-
-  var intersects = raycaster.intersectObjects(draggableHandles);
-  if (intersects.length > 0) {
-    controls.enabled = false;
-    selection = intersects[0].object;
-    var intersects = raycaster.intersectObject(frustumPlane);
-    offset.copy(intersects[0].point).sub(frustumPlane.position)
-  }
-
-  POINT_ONE = draggableHandles[0].position;
-  POINT_TWO = draggableHandles[1].position;
-  POINT_THREE = draggableHandles[2].position;
-  POINT_FOUR = draggableHandles[3].position;
-});
-
-document.body.addEventListener("mousemove", function(event){
-  mouse.x = ( event.clientX / window.innerWidth ) * 2 - 1;
-  mouse.y = - ( event.clientY / window.innerHeight ) * 2 + 1;
-
-  var vector = new THREE.Vector3(mouse.x, mouse.y, 1);
-  vector.unproject(camera);
-
-  raycaster.set(camera.position, vector.sub(camera.position).normalize());
-
-  if (selection) {
-    var intersects = raycaster.intersectObject(frustumPlane);
-    selection.position.copy(intersects[0].point.sub(offset));
-  } else{
-    var intersects = raycaster.intersectObjects(draggableHandles);
-    // Update frustum plane
-    if (intersects.length > 0) {
-      frustumPlane.position.copy(intersects[0].object.position);
-      frustumPlane.lookAt(camera.position);
-    }
-  }
-});
-
+//document.body.addEventListener("mouseup", function(event) {
+//  update();
+//  controls.enabled = true;
+//  selection = null;
+//});
+//
+//document.body.addEventListener("mousedown", function(event) {
+//  mouse.x = ( event.clientX / window.innerWidth ) * 2 - 1;
+//  mouse.y = - ( event.clientY / window.innerHeight ) * 2 + 1;
+//
+//  var vector = new THREE.Vector3(mouse.x, mouse.y, 1);
+//  vector.unproject(camera);
+//
+//  raycaster.set(camera.position, vector.sub(camera.position).normalize());
+//
+//  var intersects = raycaster.intersectObjects(draggableHandles);
+//  if (intersects.length > 0) {
+//    controls.enabled = false;
+//    selection = intersects[0].object;
+//    var intersects = raycaster.intersectObject(frustumPlane);
+//    offset.copy(intersects[0].point).sub(frustumPlane.position)
+//  }
+//
+//  POINT_ONE = draggableHandles[0].position;
+//  POINT_TWO = draggableHandles[1].position;
+//  POINT_THREE = draggableHandles[2].position;
+//  POINT_FOUR = draggableHandles[3].position;
+//});
+//
+//document.body.addEventListener("mousemove", function(event){
+//  mouse.x = ( event.clientX / window.innerWidth ) * 2 - 1;
+//  mouse.y = - ( event.clientY / window.innerHeight ) * 2 + 1;
+//
+//  var vector = new THREE.Vector3(mouse.x, mouse.y, 1);
+//  vector.unproject(camera);
+//
+//  raycaster.set(camera.position, vector.sub(camera.position).normalize());
+//
+//  if (selection) {
+//    var intersects = raycaster.intersectObject(frustumPlane);
+//    selection.position.copy(intersects[0].point.sub(offset));
+//  } else{
+//    var intersects = raycaster.intersectObjects(draggableHandles);
+//    // Update frustum plane
+//    if (intersects.length > 0) {
+//      frustumPlane.position.copy(intersects[0].object.position);
+//      frustumPlane.lookAt(camera.position);
+//    }
+//  }
+//});
+//
 init();
